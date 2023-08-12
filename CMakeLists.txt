@@ -32,10 +32,14 @@ ament_target_dependencies(server rclcpp vehicle_interfaces)
 add_executable(pub src/pub.cpp)
 ament_target_dependencies(pub rclcpp vehicle_interfaces)
 
+add_executable(control src/control.cpp)
+ament_target_dependencies(control rclcpp vehicle_interfaces)
+
 ## Install
 install(TARGETS
   server
   pub
+  control
   DESTINATION lib/${PROJECT_NAME}
 )
 

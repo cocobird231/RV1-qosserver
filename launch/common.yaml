@@ -7,10 +7,10 @@ launch_node : "server" # Server: server; Test: pub
 # The nodeName describes the name of node, the name will be automatically formed as "<nodeName>_<id>_node"
 generic_prop:
     namespace : "V0"
-    nodeName : "safetyserver"
+    nodeName : "qosserver"
     id : 0 # Frequently changed parameter
     qosService : "qos_0"
     safetyService : "safety_0"
     timesyncService : "timesync_0"
-    timesyncInterval_ms : 10000.0
+    timesyncInterval_ms : 30000.0
     timesyncAccuracy_ms : 2.0

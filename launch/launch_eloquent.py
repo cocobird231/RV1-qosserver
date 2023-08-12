@@ -7,12 +7,12 @@ import yaml
 from yaml import load, Loader
 
 def generate_launch_description():
-    commonFilePath = os.path.join(get_package_share_directory('cpp_safetyserver'), 'launch/common.yaml')
+    commonFilePath = os.path.join(get_package_share_directory('cpp_qosserver'), 'launch/common.yaml')
     with open(commonFilePath, 'r') as f:
         data = yaml.load(f, Loader=Loader)
     return LaunchDescription([
         Node(
-            package="cpp_safetyserver",
+            package="cpp_qosserver",
             node_namespace=data['generic_prop']['namespace'],
             node_executable=data['launch_node'],
             output="screen",
