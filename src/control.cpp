@@ -98,6 +98,7 @@ void SpinExecutor(rclcpp::executors::SingleThreadedExecutor* exec, bool& stopF)
 {
     std::this_thread::sleep_for(1s);
     printf("[SpinExecutor] Spin start.\n");
+    stopF = false;
     exec->spin();
     printf("[SpinExecutor] Spin ended.\n");
     stopF = true;
@@ -111,8 +112,11 @@ int main(int argc, char* argv[])
     rclcpp::executors::SingleThreadedExecutor* exec = new rclcpp::executors::SingleThreadedExecutor();
     exec->add_node(control);
 
-    bool stopF = false;
+    bool stopF = true;
     auto th = std::thread(SpinExecutor, exec, std::ref(stopF));
+
+    while (stopF)
+        std::this_thread::sleep_for(500ms);
 
     std::random_device rd_;
     std::mt19937 gen_{rd_()};
@@ -214,6 +218,7 @@ int main(int argc, char* argv[])
             
             control->setParam(param);
         }
+        std::this_thread::sleep_for(10ms);
     }
     rclcpp::shutdown();
 }

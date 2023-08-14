@@ -3,7 +3,7 @@
 #include "vehicle_interfaces/vehicle_interfaces.h"
 #include "vehicle_interfaces/msg/wheel_state.hpp"
 
-#define NODE_NAME "qostest_0_node"
+#define NODE_NAME "qospubtest_0_node"
 #define TOPIC_NAME "topic"
 
 using namespace std::chrono_literals;
@@ -14,38 +14,32 @@ private:
     rclcpp::Publisher<vehicle_interfaces::msg::WheelState>::SharedPtr publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
     std::string nodeName_;
-    int cnt_;
-    float emP_;
-
-    std::random_device rd_;
-    std::mt19937 gen_{rd_()};
-
-    std::map<std::string, rclcpp::QoS*> qmap_;
 
 private:
     void _timerCallback()
     {
+        static uint64_t cnt = 0;
         auto msg = vehicle_interfaces::msg::WheelState();
+        msg.header.priority = vehicle_interfaces::msg::Header::PRIORITY_CONTROL;
+        msg.header.device_type = vehicle_interfaces::msg::Header::DEVTYPE_STEERINGWHEEL;
         msg.header.device_id = this->nodeName_;
+        msg.header.frame_id = cnt;
         msg.header.stamp_type = this->getTimestampType();
         msg.header.stamp = this->getTimestamp();
         msg.header.stamp_offset = this->getCorrectDuration().nanoseconds();
+        msg.header.ref_publish_time_ms = 20;
 
         msg.gear = vehicle_interfaces::msg::WheelState::GEAR_NEUTRAL;
-        msg.steering = cnt_ % 512;
-        msg.pedal_throttle = cnt_ % 256;
-        msg.pedal_brake = cnt_ % 128;
-        msg.pedal_clutch = cnt_ % 64;
-        msg.button = cnt_ % 32;
-        msg.func = cnt_ % 16;
+        msg.steering = cnt % 512;
+        msg.pedal_throttle = cnt % 256;
+        msg.pedal_brake = cnt % 128;
+        msg.pedal_clutch = cnt % 64;
+        msg.button = cnt % 32;
+        msg.func = cnt % 16;
 
-        if (cnt_ % 100 == 1)
+        if (cnt++ % 100 == 1)
             RCLCPP_INFO(this->get_logger(), "[SamplePublisher::_timerCallback] Publishing");
         this->publisher_->publish(msg);
-        this->cnt_++;
-
-        static std::uniform_real_distribution<> uniDistrib{0.0, 1.0};
-        // this->setEmergency(this->nodeName_, uniDistrib(this->gen_));
     }
 
     void _qosCallback(std::map<std::string, rclcpp::QoS*> qmap)
@@ -85,16 +79,13 @@ public:
 
         this->addQoSTracking(this->publisher_->get_topic_name());
         this->addQoSCallbackFunc(std::bind(&SamplePublisher::_qosCallback, this, std::placeholders::_1));
-
-        this->cnt_ = 0;
-        this->emP_ = 0.0;
     }
 };
 
 int main(int argc, char * argv[])
 {
     rclcpp::init(argc, argv);
-    auto params = std::make_shared<vehicle_interfaces::GenericParams>("qostest_params_node");
+    auto params = std::make_shared<vehicle_interfaces::GenericParams>("qospubtest_params_node");
     params->timesyncService = "";
     params->safetyService = "";
     auto timeSyncPub = std::make_shared<SamplePublisher>(params);
