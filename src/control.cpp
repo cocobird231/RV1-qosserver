@@ -40,6 +40,9 @@ private:
     std::shared_ptr<rclcpp::Node> regClientNode_;
     rclcpp::Client<vehicle_interfaces::srv::QosReg>::SharedPtr regClient_;
 
+    std::shared_ptr<rclcpp::Node> reqClientNode_;
+    rclcpp::Client<vehicle_interfaces::srv::QosReq>::SharedPtr reqClient_;
+
     rclcpp::Node::SharedPtr paramNode_;
 	rclcpp::Client<rcl_interfaces::srv::SetParametersAtomically>::SharedPtr paramClient_;
 
@@ -48,6 +51,9 @@ public:
     {
         this->regClientNode_ = rclcpp::Node::make_shared(nodeName + "_qosreg_client");
         this->regClient_ = this->regClientNode_->create_client<vehicle_interfaces::srv::QosReg>(qosServiceName + "_Reg");
+
+        this->reqClientNode_ = rclcpp::Node::make_shared(nodeName + "_qosreq_client");
+        this->reqClient_ = this->reqClientNode_->create_client<vehicle_interfaces::srv::QosReq>(qosServiceName + "_Req");
 
         this->paramNode_ = rclcpp::Node::make_shared(nodeName + "_qosparam_client");
         this->paramClient_ = this->paramNode_->create_client<rcl_interfaces::srv::SetParametersAtomically>("qosserver_0_node/set_parameters_atomically");
@@ -69,6 +75,31 @@ public:
             return res->response;
         }
         RCLCPP_INFO(this->get_logger(), "[QoSControlNode::requestQosReg] Request failed.");
+        return false;
+    }
+
+    bool requestQosReq(const std::string& topicName, rmw_qos_profile_t& outQoSProfile)
+    {
+        auto request = std::make_shared<vehicle_interfaces::srv::QosReq::Request>();
+        request->topic_name = topicName;
+        auto result = this->reqClient_->async_send_request(request);
+#if ROS_DISTRO == 0
+        if (rclcpp::spin_until_future_complete(this->reqClientNode_, result, 100ms) == rclcpp::executor::FutureReturnCode::SUCCESS)
+#else
+        if (rclcpp::spin_until_future_complete(this->reqClientNode_, result, 100ms) == rclcpp::FutureReturnCode::SUCCESS)
+#endif
+        {
+            auto res = result.get();
+            RCLCPP_INFO(this->get_logger(), "[QoSControlNode::requestQosReq] Response: %d, qid: %ld", res->response, res->qid);
+            if (res->response)
+            {
+                outQoSProfile = vehicle_interfaces::CvtMsgToRMWQoS(res->qos_profile);
+                RCLCPP_INFO(this->get_logger(), "[QoSControlNode::requestQosReq] Profile get: %s, %d", 
+                    vehicle_interfaces::getQoSProfEnumName(outQoSProfile.reliability).c_str(), outQoSProfile.depth);
+            }
+            return res->response;
+        }
+        RCLCPP_INFO(this->get_logger(), "[QoSControlNode::requestQosReq] Request failed.");
         return false;
     }
 
