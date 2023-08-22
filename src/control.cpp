@@ -198,7 +198,7 @@ int main(int argc, char* argv[])
                     if (inputStrVec.size() == 3)
                     {
                         static std::uniform_real_distribution<> uniDistrib{0.0, 1.0};
-                        int depth = uniDistrib(gen_) * 100 + 1;
+                        int depth = uniDistrib(gen_) * 10;
                         req.qos_profile.depth = depth;
                     }
                     else if (inputStrVec.size() == 4)
@@ -209,6 +209,12 @@ int main(int argc, char* argv[])
                     {
                         req.qos_profile.depth = std::stoi(inputStrVec[3]);
                         req.qos_profile.reliability = std::stoi(inputStrVec[4]);
+                    }
+                    else if (inputStrVec.size() == 6)
+                    {
+                        req.qos_profile.depth = std::stoi(inputStrVec[3]);
+                        req.qos_profile.reliability = std::stoi(inputStrVec[4]);
+                        req.qos_profile.durability = std::stoi(inputStrVec[5]);
                     }
                     else
                         continue;

@@ -88,33 +88,31 @@ private:
             {
                 this->timer0_->cancel();
                 while (!this->timer0_->is_canceled())
-                    std::this_thread::sleep_for(100ms);
+                    std::this_thread::sleep_for(50ms);
+                
                 this->timer0_.reset();// Call destructor
-                RCLCPP_INFO(this->get_logger(), "[SamplePublisher::_qosCallback] Timer0 reset. [%p:%d]", this->timer0_, this->timer0_.use_count());
-
-                this->pub0_.reset();
-                RCLCPP_INFO(this->get_logger(), "[SamplePublisher::_qosCallback] Publisher0 reset. [%p:%d]", this->pub0_, this->pub0_.use_count());
+                // std::cout << "[SamplePublisher::_qosCallback] Timer0 reset. [" << this->timer0_ << ":" << this->timer0_.use_count() << "]\n";
+                this->pub0_.reset();// Call destructor
+                // std::cout << "[SamplePublisher::_qosCallback] Publisher0 reset. [" << this->pub0_ << ":" << this->pub0_.use_count() << "]\n";
                 this->pub0_ = this->create_publisher<vehicle_interfaces::msg::WheelState>(TOPIC_NAME_0, *v);
-                RCLCPP_INFO(this->get_logger(), "[SamplePublisher::_qosCallback] Publisher0 resume. [%p:%d]", this->pub0_, this->pub0_.use_count());
-
+                // std::cout << "[SamplePublisher::_qosCallback] Publisher0 resume. [" << this->pub0_ << ":" << this->pub0_.use_count() << "]\n";
                 this->timer0_ = this->create_wall_timer(20ms, std::bind(&SamplePublisher::_timer0Callback, this));
-                RCLCPP_INFO(this->get_logger(), "[SamplePublisher::_qosCallback] Timer0 resume. [%p:%d]", this->timer0_, this->timer0_.use_count());
+                // std::cout << "[SamplePublisher::_qosCallback] Timer0 resume. [" << this->timer0_ << ":" << this->timer0_.use_count() << "]\n";
             }
             else if (k == TOPIC_NAME_1 || k == (std::string)this->get_namespace() + "/" + TOPIC_NAME_1)
             {
                 this->timer1_->cancel();
                 while (!this->timer1_->is_canceled())
-                    std::this_thread::sleep_for(100ms);
+                    std::this_thread::sleep_for(50ms);
+                
                 this->timer1_.reset();// Call destructor
-                RCLCPP_INFO(this->get_logger(), "[SamplePublisher::_qosCallback] Timer1 reset. [%p:%d]", this->timer1_, this->timer1_.use_count());
-
-                this->pub1_.reset();
-                RCLCPP_INFO(this->get_logger(), "[SamplePublisher::_qosCallback] Publisher1 reset. [%p:%d]", this->pub1_, this->pub1_.use_count());
+                // std::cout << "[SamplePublisher::_qosCallback] Timer1 reset. [" << this->timer1_ << ":" << this->timer1_.use_count() << "]\n";
+                this->pub1_.reset();// Call destructor
+                // std::cout << "[SamplePublisher::_qosCallback] Publisher1 reset. [" << this->pub1_ << ":" << this->pub1_.use_count() << "]\n";
                 this->pub1_ = this->create_publisher<vehicle_interfaces::msg::Distance>(TOPIC_NAME_1, *v);
-                RCLCPP_INFO(this->get_logger(), "[SamplePublisher::_qosCallback] Publisher1 resume. [%p:%d]", this->pub1_, this->pub1_.use_count());
-
+                // std::cout << "[SamplePublisher::_qosCallback] Publisher1 resume. [" << this->pub1_ << ":" << this->pub1_.use_count() << "]\n";
                 this->timer1_ = this->create_wall_timer(50ms, std::bind(&SamplePublisher::_timer1Callback, this));
-                RCLCPP_INFO(this->get_logger(), "[SamplePublisher::_qosCallback] Timer1 resume. [%p:%d]", this->timer1_, this->timer1_.use_count());
+                // std::cout << "[SamplePublisher::_qosCallback] Timer1 resume. [" << this->timer1_ << ":" << this->timer1_.use_count() << "]\n";
             }
         }
     }
@@ -131,16 +129,31 @@ public:
          */
         this->addQoSCallbackFunc(std::bind(&SamplePublisher::_qosCallback, this, std::placeholders::_1));
 
-        rclcpp::QoS* qos[2];
-        qos[0] = new rclcpp::QoS(10);
-        this->addQoSTracking(TOPIC_NAME_0, qos[0]);
-        this->pub0_ = this->create_publisher<vehicle_interfaces::msg::WheelState>(TOPIC_NAME_0, *qos[0]);
-        this->timer0_ = this->create_wall_timer(20ms, std::bind(&SamplePublisher::_timer0Callback, this));
+        {
+            vehicle_interfaces::QoSPair qpair = this->addQoSTracking(TOPIC_NAME_0);
+            if (qpair.first == "")
+                RCLCPP_ERROR(this->get_logger(), "[SamplePublisher] Failed to add topic to track list: %s", TOPIC_NAME_0);
+            else
+            {
+                RCLCPP_INFO(this->get_logger(), "[SamplePublisher] QoS profile [%s]:\nDepth: %d\nReliability: %d", 
+                    qpair.first.c_str(), qpair.second->depth(), qpair.second->reliability());
+            }
+            this->pub0_ = this->create_publisher<vehicle_interfaces::msg::WheelState>(TOPIC_NAME_0, *qpair.second);
+            this->timer0_ = this->create_wall_timer(20ms, std::bind(&SamplePublisher::_timer0Callback, this));
+        }
 
-        qos[1] = new rclcpp::QoS(10);
-        this->addQoSTracking(TOPIC_NAME_1, qos[1]);
-        this->pub1_ = this->create_publisher<vehicle_interfaces::msg::Distance>(TOPIC_NAME_1, *qos[1]);
-        this->timer1_ = this->create_wall_timer(50ms, std::bind(&SamplePublisher::_timer1Callback, this));
+        {
+            vehicle_interfaces::QoSPair qpair = this->addQoSTracking(TOPIC_NAME_1);
+            if (qpair.first == "")
+                RCLCPP_ERROR(this->get_logger(), "[SamplePublisher] Failed to add topic to track list: %s", TOPIC_NAME_1);
+            else
+            {
+                RCLCPP_INFO(this->get_logger(), "[SamplePublisher] QoS profile [%s]:\nDepth: %d\nReliability: %d", 
+                    qpair.first.c_str(), qpair.second->depth(), qpair.second->reliability());
+            }
+            this->pub1_ = this->create_publisher<vehicle_interfaces::msg::Distance>(TOPIC_NAME_1, *qpair.second);
+            this->timer1_ = this->create_wall_timer(50ms, std::bind(&SamplePublisher::_timer1Callback, this));
+        }
     }
 };
 

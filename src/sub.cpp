@@ -46,19 +46,19 @@ private:
             {
 
                 this->sub0_.reset();
-                RCLCPP_INFO(this->get_logger(), "[SampleSubscriber::_qosCallback] Subscription0 reset. [%p:%d]", this->sub0_, this->sub0_.use_count());
+                // std::cout << "[SampleSubscriber::_qosCallback] Subscription0 reset. [" << this->sub0_ << ":" << this->sub0_.use_count() << "]\n";
                 this->sub0_ = this->create_subscription<vehicle_interfaces::msg::WheelState>(TOPIC_NAME_0, 
                     *v, std::bind(&SampleSubscriber::_topic0Callback, this, std::placeholders::_1));
-                RCLCPP_INFO(this->get_logger(), "[SampleSubscriber::_qosCallback] Subscription0 resume. [%p:%d]", this->sub0_, this->sub0_.use_count());
+                // std::cout << "[SampleSubscriber::_qosCallback] Subscription0 resume. [" << this->sub0_ << ":" << this->sub0_.use_count() << "]\n";
             }
             else if (k == TOPIC_NAME_1 || k == (std::string)this->get_namespace() + "/" + TOPIC_NAME_1)
             {
 
                 this->sub1_.reset();
-                RCLCPP_INFO(this->get_logger(), "[SampleSubscriber::_qosCallback] Subscription1 reset. [%p:%d]", this->sub1_, this->sub1_.use_count());
+                // std::cout << "[SampleSubscriber::_qosCallback] Subscription1 reset. [" << this->sub1_ << ":" << this->sub1_.use_count() << "]\n";
                 this->sub1_ = this->create_subscription<vehicle_interfaces::msg::Distance>(TOPIC_NAME_1, 
                     *v, std::bind(&SampleSubscriber::_topic1Callback, this, std::placeholders::_1));
-                RCLCPP_INFO(this->get_logger(), "[SampleSubscriber::_qosCallback] Subscription1 resume. [%p:%d]", this->sub1_, this->sub1_.use_count());
+                // std::cout << "[SampleSubscriber::_qosCallback] Subscription1 resume. [" << this->sub1_ << ":" << this->sub1_.use_count() << "]\n";
             }
         }
     }
@@ -69,22 +69,36 @@ public:
         rclcpp::Node(NODE_NAME)
     {
         this->nodeName_ = NODE_NAME;
-
         /*
          * Add following codes for QoSUpdateNode support
          */
         this->addQoSCallbackFunc(std::bind(&SampleSubscriber::_qosCallback, this, std::placeholders::_1));
-
-        rclcpp::QoS* qos[2];
-        qos[0] = new rclcpp::QoS(10);
-        this->addQoSTracking(TOPIC_NAME_0, qos[0]);
-        this->sub0_ = this->create_subscription<vehicle_interfaces::msg::WheelState>(TOPIC_NAME_0, 
-            *qos[0], std::bind(&SampleSubscriber::_topic0Callback, this, std::placeholders::_1));
         
-        qos[1] = new rclcpp::QoS(10);
-        this->addQoSTracking(TOPIC_NAME_1, qos[1]);
-        this->sub1_ = this->create_subscription<vehicle_interfaces::msg::Distance>(TOPIC_NAME_1, 
-            *qos[1], std::bind(&SampleSubscriber::_topic1Callback, this, std::placeholders::_1));
+        {
+            vehicle_interfaces::QoSPair qpair = this->addQoSTracking(TOPIC_NAME_0);
+            if (qpair.first == "")
+                RCLCPP_ERROR(this->get_logger(), "[SampleSubscriber] Failed to add topic to track list: %s", TOPIC_NAME_0);
+            else
+            {
+                RCLCPP_INFO(this->get_logger(), "[SampleSubscriber] QoS profile [%s]:\nDepth: %d\nReliability: %d", 
+                    qpair.first.c_str(), qpair.second->depth(), qpair.second->reliability());
+            }
+            this->sub0_ = this->create_subscription<vehicle_interfaces::msg::WheelState>(TOPIC_NAME_0, 
+                *qpair.second, std::bind(&SampleSubscriber::_topic0Callback, this, std::placeholders::_1));
+        }
+
+        {
+            vehicle_interfaces::QoSPair qpair = this->addQoSTracking(TOPIC_NAME_1);
+            if (qpair.first == "")
+                RCLCPP_ERROR(this->get_logger(), "[SampleSubscriber] Failed to add topic to track list: %s", TOPIC_NAME_1);
+            else
+            {
+                RCLCPP_INFO(this->get_logger(), "[SampleSubscriber] QoS profile [%s]:\nDepth: %d\nReliability: %d", 
+                    qpair.first.c_str(), qpair.second->depth(), qpair.second->reliability());
+            }
+            this->sub1_ = this->create_subscription<vehicle_interfaces::msg::Distance>(TOPIC_NAME_1, 
+                *qpair.second, std::bind(&SampleSubscriber::_topic1Callback, this, std::placeholders::_1));
+        }
     }
 };
 
