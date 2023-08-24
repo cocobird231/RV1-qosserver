@@ -136,7 +136,7 @@ public:
             else
             {
                 RCLCPP_INFO(this->get_logger(), "[SamplePublisher] QoS profile [%s]:\nDepth: %d\nReliability: %d", 
-                    qpair.first.c_str(), qpair.second->depth(), qpair.second->reliability());
+                    qpair.first.c_str(), qpair.second->get_rmw_qos_profile().depth, qpair.second->get_rmw_qos_profile().reliability);
             }
             this->pub0_ = this->create_publisher<vehicle_interfaces::msg::WheelState>(TOPIC_NAME_0, *qpair.second);
             this->timer0_ = this->create_wall_timer(20ms, std::bind(&SamplePublisher::_timer0Callback, this));
@@ -149,7 +149,7 @@ public:
             else
             {
                 RCLCPP_INFO(this->get_logger(), "[SamplePublisher] QoS profile [%s]:\nDepth: %d\nReliability: %d", 
-                    qpair.first.c_str(), qpair.second->depth(), qpair.second->reliability());
+                    qpair.first.c_str(), qpair.second->get_rmw_qos_profile().depth, qpair.second->get_rmw_qos_profile().reliability);
             }
             this->pub1_ = this->create_publisher<vehicle_interfaces::msg::Distance>(TOPIC_NAME_1, *qpair.second);
             this->timer1_ = this->create_wall_timer(50ms, std::bind(&SamplePublisher::_timer1Callback, this));

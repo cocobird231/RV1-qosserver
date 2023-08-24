@@ -8,6 +8,7 @@ endif()
 # ROS2 distro
 if($ENV{ROS_DISTRO} STREQUAL "foxy")
   add_compile_options(-DROS_DISTRO=1)
+  add_compile_options(-std=c++17)
 elseif($ENV{ROS_DISTRO} STREQUAL "humble")
   add_compile_options(-DROS_DISTRO=2)
 else()# eloquent

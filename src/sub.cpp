@@ -81,7 +81,7 @@ public:
             else
             {
                 RCLCPP_INFO(this->get_logger(), "[SampleSubscriber] QoS profile [%s]:\nDepth: %d\nReliability: %d", 
-                    qpair.first.c_str(), qpair.second->depth(), qpair.second->reliability());
+                    qpair.first.c_str(), qpair.second->get_rmw_qos_profile().depth, qpair.second->get_rmw_qos_profile().reliability);
             }
             this->sub0_ = this->create_subscription<vehicle_interfaces::msg::WheelState>(TOPIC_NAME_0, 
                 *qpair.second, std::bind(&SampleSubscriber::_topic0Callback, this, std::placeholders::_1));
@@ -94,7 +94,7 @@ public:
             else
             {
                 RCLCPP_INFO(this->get_logger(), "[SampleSubscriber] QoS profile [%s]:\nDepth: %d\nReliability: %d", 
-                    qpair.first.c_str(), qpair.second->depth(), qpair.second->reliability());
+                    qpair.first.c_str(), qpair.second->get_rmw_qos_profile().depth, qpair.second->get_rmw_qos_profile().reliability);
             }
             this->sub1_ = this->create_subscription<vehicle_interfaces::msg::Distance>(TOPIC_NAME_1, 
                 *qpair.second, std::bind(&SampleSubscriber::_topic1Callback, this, std::placeholders::_1));
