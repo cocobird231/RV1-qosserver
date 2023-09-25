@@ -58,6 +58,11 @@ public:
         this->paramNode_ = rclcpp::Node::make_shared(nodeName + "_qosparam_client");
         this->paramClient_ = this->paramNode_->create_client<rcl_interfaces::srv::SetParametersAtomically>("qosserver_0_node/set_parameters_atomically");
         RCLCPP_INFO(this->get_logger(), "[QoSControlNode] Constructed");
+
+        bool stopF = false;
+        vehicle_interfaces::ConnToService(this->regClient_, stopF);
+        vehicle_interfaces::ConnToService(this->reqClient_, stopF);
+        vehicle_interfaces::ConnToService(this->paramClient_, stopF);
     }
 
     bool requestQosReg(const std::shared_ptr<vehicle_interfaces::srv::QosReg::Request>& req)
@@ -65,13 +70,13 @@ public:
         RCLCPP_INFO(this->get_logger(), "[QoSControlNode::requestQosReg]");
         auto result = this->regClient_->async_send_request(req);
 #if ROS_DISTRO == 0
-        if (rclcpp::spin_until_future_complete(this->regClientNode_, result, 100ms) == rclcpp::executor::FutureReturnCode::SUCCESS)
+        if (rclcpp::spin_until_future_complete(this->regClientNode_, result, 500ms) == rclcpp::executor::FutureReturnCode::SUCCESS)
 #else
-        if (rclcpp::spin_until_future_complete(this->regClientNode_, result, 100ms) == rclcpp::FutureReturnCode::SUCCESS)
+        if (rclcpp::spin_until_future_complete(this->regClientNode_, result, 500ms) == rclcpp::FutureReturnCode::SUCCESS)
 #endif
         {
             auto res = result.get();
-            RCLCPP_INFO(this->get_logger(), "[QoSControlNode::regQoSRequest] Request: %d, qid: %ld", res->response, res->qid);
+            RCLCPP_INFO(this->get_logger(), "[QoSControlNode::requestQosReg] Request: %d, qid: %ld", res->response, res->qid);
             return res->response;
         }
         RCLCPP_INFO(this->get_logger(), "[QoSControlNode::requestQosReg] Request failed.");
@@ -84,9 +89,9 @@ public:
         request->topic_name = topicName;
         auto result = this->reqClient_->async_send_request(request);
 #if ROS_DISTRO == 0
-        if (rclcpp::spin_until_future_complete(this->reqClientNode_, result, 100ms) == rclcpp::executor::FutureReturnCode::SUCCESS)
+        if (rclcpp::spin_until_future_complete(this->reqClientNode_, result, 500ms) == rclcpp::executor::FutureReturnCode::SUCCESS)
 #else
-        if (rclcpp::spin_until_future_complete(this->reqClientNode_, result, 100ms) == rclcpp::FutureReturnCode::SUCCESS)
+        if (rclcpp::spin_until_future_complete(this->reqClientNode_, result, 500ms) == rclcpp::FutureReturnCode::SUCCESS)
 #endif
         {
             auto res = result.get();
@@ -139,7 +144,7 @@ int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
     auto params = std::make_shared<vehicle_interfaces::GenericParams>("qoscontrol_params_node");
-    auto control = std::make_shared<QoSControlNode>("qoscontrol_0_node", params->qosService);
+    auto control = std::make_shared<QoSControlNode>("qoscontrol_0_node", "qos_0");
     rclcpp::executors::SingleThreadedExecutor* exec = new rclcpp::executors::SingleThreadedExecutor();
     exec->add_node(control);
 
