@@ -4,35 +4,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include "vehicle_interfaces/params.h"
 #include "vehicle_interfaces/qos.h"
-
-std::vector<std::string> split(std::string str, std::string delimiter)
-{
-    std::vector<std::string> splitStrings;
-    int encodingStep = 0;
-    for (size_t i = 0; i < str.length(); i++)
-    {
-        bool isDelimiter = false;
-        for (auto& j : delimiter)
-            if (str[i] == j)
-            {
-                isDelimiter = true;
-                break;
-            }
-        if (!isDelimiter)// Is the spliting character
-        {
-            encodingStep++;
-            if (i == str.length() - 1)
-                splitStrings.push_back(str.substr(str.length() - encodingStep, encodingStep));
-        }
-        else// Is delimiter
-        {
-            if (encodingStep > 0)// Have characters need to split
-                splitStrings.push_back(str.substr(i - encodingStep, encodingStep));
-            encodingStep = 0;
-        }
-    }
-    return splitStrings;
-}
+#include "vehicle_interfaces/utils.h"
 
 class QoSControlNode : public rclcpp::Node
 {
@@ -83,10 +55,11 @@ public:
         return false;
     }
 
-    bool requestQosReq(const std::string& topicName, rmw_qos_profile_t& outQoSProfile)
+    bool requestQosReq(const std::string& topicName, const std::string& qosType, std::map<std::string, std::map<std::string, rmw_qos_profile_t> >& outQoSProfile)
     {
         auto request = std::make_shared<vehicle_interfaces::srv::QosReq::Request>();
         request->topic_name = topicName;
+        request->qos_type = qosType;
         auto result = this->reqClient_->async_send_request(request);
 #if ROS_DISTRO == 0
         if (rclcpp::spin_until_future_complete(this->reqClientNode_, result, 500ms) == rclcpp::executor::FutureReturnCode::SUCCESS)
@@ -98,9 +71,11 @@ public:
             RCLCPP_INFO(this->get_logger(), "[QoSControlNode::requestQosReq] Response: %d, qid: %ld", res->response, res->qid);
             if (res->response)
             {
-                outQoSProfile = vehicle_interfaces::CvtMsgToRMWQoS(res->qos_profile);
-                RCLCPP_INFO(this->get_logger(), "[QoSControlNode::requestQosReq] Profile get: %s, %d", 
-                    vehicle_interfaces::getQoSProfEnumName(outQoSProfile.reliability).c_str(), outQoSProfile.depth);
+                outQoSProfile.clear();
+                for (int i = 0; i < res->qos_profile_vec.size(); i++)
+                {
+                    outQoSProfile[res->topic_name_vec[i]][res->qos_type_vec[i]] = vehicle_interfaces::CvtMsgToRMWQoS(res->qos_profile_vec[i]);
+                }
             }
             return res->response;
         }
@@ -157,33 +132,51 @@ int main(int argc, char* argv[])
     std::random_device rd_;
     std::mt19937 gen_{rd_()};
 
+    printf(
+"/**\n\
+ * Profile Registration\n\
+ * - Profile add (determine (p)ublisher, (s)ubscription or (b)oth):\n\
+ *   - pr a <topic_name> <p/s/b>\n\
+ *   - pr a <topic_name> <p/s/b> <depth>\n\
+ *   - pr a <topic_name> <p/s/b> <depth> <reliability_enum>\n\
+ *   - pr a <topic_name> <p/s/b> <depth> <reliability_enum> <durability_enum>\n\
+ * - Profile remove:\n\
+ *   - pr r <topic_name>\n\
+ * - Profile clear:\n\
+ *   - pr c\n\
+ * - Profile save:\n\
+ *   - pr s\n\
+ * \n\
+ * Set Parameters\n\
+ * - Enable/Disable publish:\n\
+ *   - pa p <0/1>\n\
+ * - Set publish interval (ms):\n\
+ *   - pa i <interval_ms>\n\
+ * \n\
+ * Profile Request\n\
+ * - Profile request (determine (p)ublish or (s)ubscription):\n\
+ *   - prq <topic_name> <p/s>\n\
+ *   - prq all\n\
+ * Quit\n\
+ * - q\n\
+ */\n"
+    );
+
     while (!stopF)
     {
         printf(">");
-        // profile add topic_name
-        // profile add topic_name 10
-        // profile remove topic_name
-        // profile clear
-        // profile save
-        // param enabled_publish true
-        // param enabled_publish false
-        // param publish_interval_ms 10000
-
-        // pr a topic_name
-        // pr a topic_name 10
-        // pr r topic_name
-        // pr c
-        // pr s
-        // pa p 1
-        // pa i 10000
         std::string inputStr;
         std::getline(std::cin, inputStr);
         
         if (inputStr.size() <= 0)
             continue;
-        auto inputStrVec = split(inputStr, ", ");
-
-        if (inputStrVec[0] == "pr" && inputStrVec.size() >= 2)
+        auto inputStrVec = vehicle_interfaces::split(inputStr, ", ");
+        if (inputStrVec[0] == "q")
+        {
+            stopF = true;
+            break;
+        }
+        else if (inputStrVec[0] == "pr" && inputStrVec.size() >= 2)
         {
             vehicle_interfaces::srv::QosReg::Request req;
 
@@ -195,34 +188,29 @@ int main(int argc, char* argv[])
             {
                 req.save_qmap = true;
             }
-            else if (inputStrVec[1] == "a" && inputStrVec.size() >= 3)
+            else if (inputStrVec[1] == "a" && inputStrVec.size() >= 4)
             {
                 req.topic_name = inputStrVec[2];
+                req.qos_type = inputStrVec[3] == "p" ? "publisher" : 
+                                (inputStrVec[3] == "s" ? "subscription" : 
+                                (inputStrVec[3] == "b" ? "both" : ""));
                 try
                 {
-                    if (inputStrVec.size() == 3)
+                    if (inputStrVec.size() == 4)
                     {
                         static std::uniform_real_distribution<> uniDistrib{0.0, 1.0};
                         int depth = uniDistrib(gen_) * 10;
                         req.qos_profile.depth = depth;
                     }
-                    else if (inputStrVec.size() == 4)
-                    {
-                        req.qos_profile.depth = std::stoi(inputStrVec[3]);
-                    }
-                    else if (inputStrVec.size() == 5)
-                    {
-                        req.qos_profile.depth = std::stoi(inputStrVec[3]);
-                        req.qos_profile.reliability = std::stoi(inputStrVec[4]);
-                    }
-                    else if (inputStrVec.size() == 6)
-                    {
-                        req.qos_profile.depth = std::stoi(inputStrVec[3]);
-                        req.qos_profile.reliability = std::stoi(inputStrVec[4]);
-                        req.qos_profile.durability = std::stoi(inputStrVec[5]);
-                    }
                     else
-                        continue;
+                    {
+                        if (inputStrVec.size() >= 5)
+                            req.qos_profile.depth = std::stoi(inputStrVec[4]);
+                        if (inputStrVec.size() >= 6)
+                            req.qos_profile.reliability = std::stoi(inputStrVec[5]);
+                        if (inputStrVec.size() >= 7)
+                            req.qos_profile.durability = std::stoi(inputStrVec[6]);
+                    }
                 }
                 catch (...)
                 {
@@ -236,7 +224,7 @@ int main(int argc, char* argv[])
             }
             else
                 continue;
-            
+
             control->requestQosReg(std::make_shared<vehicle_interfaces::srv::QosReg::Request>(req));
         }
         else if (inputStrVec[0] == "pa" && inputStrVec.size() == 3)
@@ -257,10 +245,37 @@ int main(int argc, char* argv[])
             }
             else
                 continue;
-            
+
             control->setParam(param);
         }
-        std::this_thread::sleep_for(10ms);
+        else if (inputStrVec[0] == "prq" && inputStrVec.size() >= 3)
+        {
+            std::map<std::string, std::map<std::string, rmw_qos_profile_t>> topicQoS;
+            if (inputStrVec[2] == "p")
+                control->requestQosReq(inputStrVec[1], "publisher", topicQoS);
+            else if (inputStrVec[2] == "s")
+                control->requestQosReq(inputStrVec[1], "subscription", topicQoS);
+            else if (inputStrVec[2] == "b")
+                control->requestQosReq(inputStrVec[1], "both", topicQoS);
+            else
+                continue;
+            vehicle_interfaces::HierarchicalPrint hprint;
+            for (const auto& [topicName, tQoS] : topicQoS)
+            {
+                for (const auto& [type, prof] : tQoS)
+                {
+                    hprint.push(0, "[Topic: %s]", topicName.c_str());
+                    hprint.push(1, "[%s]", type.c_str());
+                    hprint.push(2, "[History: %d]", prof.history);
+                    hprint.push(2, "[Depth: %ld]", prof.depth);
+                    hprint.push(2, "[Reliability: %d]", prof.reliability);
+                    hprint.push(2, "[Durability: %d]", prof.durability);
+                }
+            }
+            hprint.print();
+            hprint.clear();
+        }
+        std::this_thread::sleep_for(100ms);
     }
     rclcpp::shutdown();
 }

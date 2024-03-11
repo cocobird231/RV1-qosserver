@@ -161,6 +161,7 @@ int main(int argc, char * argv[])
 {
     rclcpp::init(argc, argv);
     auto params = std::make_shared<vehicle_interfaces::GenericParams>("qospubtest_params_node");
+    params->devInfoService = "";
     params->timesyncService = "";
     params->safetyService = "";
     auto timeSyncPub = std::make_shared<SamplePublisher>(params);

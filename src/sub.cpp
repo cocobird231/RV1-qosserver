@@ -106,6 +106,7 @@ int main(int argc, char * argv[])
 {
     rclcpp::init(argc, argv);
     auto params = std::make_shared<vehicle_interfaces::GenericParams>("qossubtest_params_node");
+    params->devInfoService = "";
     params->timesyncService = "";
     params->safetyService = "";
     auto timeSyncSub = std::make_shared<SampleSubscriber>(params);
